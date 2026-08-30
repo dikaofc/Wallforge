@@ -34,3 +34,6 @@ ehthumbs.db
 # IDE
 .vscode/
 .idea/
+
+# release artifact at repo root
+/Wallforge-Setup.exe
