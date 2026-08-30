@@ -250,6 +250,11 @@ class Database:
             (mp.monitor_id, mp.wallpaper_id, mp.settings))
         self.conn.commit()
 
+    def clear_monitor_profile(self, monitor_id: str) -> None:
+        self.conn.execute(
+            "DELETE FROM monitor_profiles WHERE monitor_id=?", (monitor_id,))
+        self.conn.commit()
+
     def get_monitor_profiles(self) -> list[MonitorProfile]:
         rows = self.conn.execute("SELECT * FROM monitor_profiles").fetchall()
         return [MonitorProfile(**dict(r)) for r in rows]

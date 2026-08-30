@@ -55,6 +55,16 @@ class WallpaperManager:
         if not w:
             log.error("wallpaper %s not found", wallpaper_id)
             return False
+        # Auto-heal: skip (and forget) wallpapers whose source is gone.
+        if not Path(w.path).exists():
+            log.warning("wallpaper %s source missing, skipping: %s", w.id, w.path)
+            try:
+                for mp in self.db.get_monitor_profiles():
+                    if mp.wallpaper_id == w.id:
+                        self.db.clear_monitor_profile(mp.monitor_id)
+            except Exception:
+                pass
+            return False
         try:
             manifest, content = load(w.path)
         except Exception as exc:

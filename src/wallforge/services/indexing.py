@@ -108,7 +108,7 @@ def index_directory(db: Database, root: Path) -> int:
         except Exception as exc:
             log.debug("skip %s: %s", folder, exc)
             continue
-        seen.add(str(folder))
+        seen.add(str(folder.resolve()))
 
         thumb = folder / "thumbnail.jpg"
         preview = folder / "preview.jpg"
@@ -136,7 +136,7 @@ def index_directory(db: Database, root: Path) -> int:
         log.info("indexed: %s (%s)", manifest.name, manifest.type)
     # Drop folders that no longer exist.
     for w in db.list_wallpapers():
-        if str(w.path) not in seen and not Path(w.path).exists():
+        if str(Path(w.path).resolve()) not in seen and not Path(w.path).exists():
             db.delete_wallpaper(w.id)
     return count
 
@@ -144,7 +144,7 @@ def index_directory(db: Database, root: Path) -> int:
 def _row_from(folder: Path, m: Manifest, thumb: Path, preview: Path):
     from ..database.models import Wallpaper
     return Wallpaper(
-        id=None, title=m.name, author=m.author, type=m.type, path=str(folder),
+        id=None, title=m.name, author=m.author, type=m.type, path=str(folder.resolve()),
         thumbnail=str(thumb) if thumb.exists() else None,
         preview=str(preview) if preview.exists() else None,
         favorite=0, created_at=None, tags=",".join(m.tags),

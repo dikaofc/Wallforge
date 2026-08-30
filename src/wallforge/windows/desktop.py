@@ -33,6 +33,11 @@ SWP_NOMOVE = 0x0002
 SWP_NOSIZE = 0x0001
 SWP_NOOWNERZORDER = 0x0200
 
+# SetWindowLongPtrW accepts a LONG for the style/extstyle argument; declare the
+# prototype so ctypes marshals the (possibly >32-bit) Python int correctly.
+user32.SetWindowLongPtrW.restype = wintypes.LONG
+user32.SetWindowLongPtrW.argtypes = [wintypes.HWND, wintypes.INT, wintypes.LONG]
+
 SPI_GETDESKWALLPAPER = 0x0073
 SPI_SETDESKWALLPAPER = 0x0014
 SPIF_UPDATEINIFILE = 0x01
@@ -89,10 +94,10 @@ def attach_to_desktop(hwnd: int) -> bool:
             return False
         style = user32.GetWindowLongW(hwnd, GWL_STYLE)
         style = (style & ~WS_POPUP) | WS_CHILD | WS_VISIBLE
-        user32.SetWindowLongW(hwnd, GWL_STYLE, style)
+        user32.SetWindowLongPtrW(hwnd, GWL_STYLE, ctypes.c_int(style).value)
         ex = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
         ex = ex | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
-        user32.SetWindowLongW(hwnd, GWL_EXSTYLE, ex)
+        user32.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ctypes.c_int(ex).value)
         user32.SetParent(hwnd, worker)
         # Make the render window a normal child (top of the WorkerW's children),
         # then raise the desktop icon listview above it so icons remain visible.

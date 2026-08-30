@@ -18,11 +18,14 @@ from PySide6.QtWidgets import (QHBoxLayout, QLabel, QLineEdit, QPushButton,
                                QMessageBox, QMenu)
 
 from ..core.config import Config
+from ..core.logger import setup_logger
 from ..database.database import Database
 from ..performance.pause_manager import PauseManager
 from .sidebar import Sidebar
 from .wallpaper_grid import WallpaperGrid
 from .settings import SettingsPage
+
+log = setup_logger("wallforge.ui")
 
 
 class MainWindow(QWidget):
@@ -62,6 +65,13 @@ class MainWindow(QWidget):
         self.grid.wallpaperClicked.connect(self._apply_wallpaper)
         self.grid.wallpaperRightClicked.connect(self._fav_toggle)
         self.sidebar.pageSelected.connect(self._show)
+
+        # Index wallpapers from the configured directory on each launch.
+        try:
+            from ..services import indexing
+            indexing.index_all(self.db, self.config)
+        except Exception as exc:
+            log.warning("indexing failed: %s", exc)
 
         self._refresh_grid()
         self.sidebar.select("library")
