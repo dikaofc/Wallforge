@@ -1,7 +1,7 @@
 {
-  "version": "0.1.0",
-  "url": "https://github.com/dikaofc/Wallforge/releases/download/v0.1.0/Wallforge-Setup.exe",
-  "sha256": "a373703c4d9eded7656de4757b5884cb59b800a76d6fba228bd23a44badd4625",
-  "notes": "First release of Wallforge — Wallpaper Engine-class desktop wallpaper app (Python/PySide6). Image/video/web/interactive wallpapers, multi-monitor, performance manager, simple click-to-apply UI, auto-updater, system tray, startup.",
+  "version": "0.1.1",
+  "url": "https://github.com/dikaofc/Wallforge/releases/download/v0.1.1/Wallforge-Setup.exe",
+  "sha256": "3b1897410f451621389a18b1fc1d4e1dae8975b545493c94abc2329d106a90b3",
+  "notes": "Fix: wallpaper now attaches to desktop correctly (SetWindowLongPtr OverflowError), absolute wallpaper paths, auto-index on startup so the grid populates, and stale-profile auto-heal on launch.",
   "mandatory": false
 }
