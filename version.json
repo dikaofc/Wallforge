@@ -1,7 +1,7 @@
 {
   "version": "0.1.0",
   "url": "https://github.com/dikaofc/Wallforge/releases/download/v0.1.0/Wallforge-Setup.exe",
-  "sha256": "",
-  "notes": "Current release. Bump 'version' and set 'url' to a new GitHub release asset to ship an update.",
+  "sha256": "a373703c4d9eded7656de4757b5884cb59b800a76d6fba228bd23a44badd4625",
+  "notes": "First release of Wallforge — Wallpaper Engine-class desktop wallpaper app (Python/PySide6). Image/video/web/interactive wallpapers, multi-monitor, performance manager, simple click-to-apply UI, auto-updater, system tray, startup.",
   "mandatory": false
 }
