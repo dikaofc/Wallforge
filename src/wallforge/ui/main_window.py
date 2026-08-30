@@ -32,16 +32,23 @@ class MainWindow(QWidget):
         self.setStyleSheet("background:#12141a;color:#e6e6e6;")
 
         root = QHBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
         self.sidebar = Sidebar()
+        self.sidebar.setMinimumWidth(170)
         root.addWidget(self.sidebar)
 
         right = QVBoxLayout()
+        right.setContentsMargins(10, 10, 10, 10)
+        right.setSpacing(8)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Search wallpapers…")
         self.search.textChanged.connect(self._search)
+        self.search.setMinimumHeight(34)
         right.addWidget(self.search)
 
         self.stack = QStackedWidget()
+        self.stack.setStyleSheet("background:#12141a;")
         right.addWidget(self.stack, 1)
         root.addLayout(right, 1)
 
@@ -62,14 +69,23 @@ class MainWindow(QWidget):
         self.editor.export_requested.connect(self._on_export)
         self.settings_page = SettingsPage(self.config, self.manager)
 
-        self.stack.addWidget(self.home)        # home
-        self.stack.addWidget(self.grid)        # library
-        self.stack.addWidget(self.fav)         # favorites
-        self.stack.addWidget(self.collections) # collections
-        self.stack.addWidget(self.displays)    # displays
-        self.stack.addWidget(self.performance) # performance
-        self.stack.addWidget(self.editor)      # editor
-        self.stack.addWidget(self.settings_page)  # settings
+        # Wrap fixed-content pages in scroll areas so they never overflow
+        # small windows (text stays visible, layout stays responsive).
+        from PySide6.QtWidgets import QScrollArea
+        def scrolled(widget):
+            sa = QScrollArea()
+            sa.setWidgetResizable(True)
+            sa.setWidget(widget)
+            return sa
+
+        self.stack.addWidget(self.home)               # home
+        self.stack.addWidget(self.grid)               # library
+        self.stack.addWidget(self.fav)                # favorites
+        self.stack.addWidget(scrolled(self.collections))   # collections
+        self.stack.addWidget(scrolled(self.displays))      # displays
+        self.stack.addWidget(scrolled(self.performance))   # performance
+        self.stack.addWidget(scrolled(self.editor))        # editor
+        self.stack.addWidget(scrolled(self.settings_page)) # settings
 
         self._pages = {
             "home": 0, "library": 1, "favorites": 2, "collections": 3,
@@ -106,6 +122,7 @@ class MainWindow(QWidget):
             on_apply=lambda i: self.manager.apply(i),
             on_favorite=lambda: (self._refresh_grid(True),
                                  self.home._refresh()),
+            manager=self.manager,
         )
         dlg.exec()
 

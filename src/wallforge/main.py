@@ -47,6 +47,10 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("Wallforge")
 
+    # Apply shared theme + icon before any window is shown.
+    from .ui.theme import apply_theme
+    apply_theme(app)
+
     # --- restore wallpaper on exit/crash -------------------------------
     from .windows.desktop import get_original_wallpaper, restore_wallpaper
     original_wp = get_original_wallpaper()

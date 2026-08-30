@@ -36,7 +36,6 @@ class WebRenderer(Renderer):
             self.webview_window = webview.create_window(
                 "wallforge-web",
                 url="file://" + str(self.content_path),
-                gui="edgechromium",
                 width=r[2] - r[0], height=r[3] - r[1],
                 background_color="#000000",
             )
