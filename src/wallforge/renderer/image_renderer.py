@@ -4,9 +4,7 @@ Very low overhead — one widget, no decode loop. Re-scales on resize.
 """
 from __future__ import annotations
 
-from pathlib import Path
-
-from PySide6.QtGui import QPixmap, Qt
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QLabel
 
 from .renderer import Renderer
@@ -20,6 +18,12 @@ class ImageRenderer(Renderer):
         self.label.setScaledContents(True)
         self.label.setStyleSheet("background:black;")
         self._pixmap = QPixmap(content_path)
+        if self._pixmap.isNull():
+            from PySide6.QtCore import Qt
+            self.label.setText("image failed to load")
+            self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        else:
+            self.label.setPixmap(self._pixmap)
         self.resize_to_monitor()
 
     def resize_to_monitor(self) -> None:
@@ -29,7 +33,8 @@ class ImageRenderer(Renderer):
 
     def start(self) -> None:
         self.running = True
-        self.window.show()
+        if self.window:
+            self.window.show()
 
     def pause(self) -> None:
         self.running = False

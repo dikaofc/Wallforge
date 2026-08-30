@@ -134,6 +134,12 @@ class Database:
         ).fetchone()
         return Wallpaper(**dict(row)) if row else None
 
+    def get_wallpaper_by_path(self, path: str) -> Optional[Wallpaper]:
+        row = self.conn.execute(
+            "SELECT * FROM wallpapers WHERE path=?", (path,)
+        ).fetchone()
+        return Wallpaper(**dict(row)) if row else None
+
     def list_wallpapers(self, *, fav_only: bool = False,
                         type_filter: Optional[str] = None,
                         search: Optional[str] = None,

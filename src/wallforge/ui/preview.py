@@ -37,21 +37,26 @@ class PreviewDialog(QDialog):
             if cand and Path(cand).exists():
                 img = cand
                 break
+        self.preview.setMinimumHeight(360)
         if img:
             pix = QPixmap(img)
             self.preview.setPixmap(pix.scaled(
-                680, 320, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                680, 360, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
-            # Last resort: try the wallpaper's own image content.
+            # Try the wallpaper's own image content (image-type wallpapers).
             try:
                 from ..wallpaper.loader import load
                 _, content = load(Path(wallpaper.path))
                 if content.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".bmp"):
                     pix = QPixmap(str(content))
                     self.preview.setPixmap(pix.scaled(
-                        680, 320, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                        680, 360, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                else:
+                    raise ValueError("not a raster image")
             except Exception:
-                pass
+                # Final fallback: render a colored placeholder so the dialog
+                # is never just empty text.
+                self._set_placeholder(wallpaper.title)
         layout.addWidget(self.preview)
 
         info = QLabel(f"<b>{wallpaper.title}</b><br>by {wallpaper.author or 'Unknown'}"
@@ -79,6 +84,28 @@ class PreviewDialog(QDialog):
         btns.addStretch()
         btns.addWidget(close_btn)
         layout.addLayout(btns)
+
+    def _set_placeholder(self, title: str) -> None:
+        """Draw a colored gradient placeholder into the preview label."""
+        try:
+            from PySide6.QtGui import QImage, QPainter, QColor
+            import colorsys
+            hue = (hash(title) % 360) / 360.0
+            w, h = 680, 360
+            img = QImage(w, h, QImage.Format.Format_RGB32)
+            painter = QPainter(img)
+            for y in range(h):
+                t = y / h
+                r1, g1, b1 = colorsys.hsv_to_rgb(hue, 0.55, 0.30)
+                r2, g2, b2 = colorsys.hsv_to_rgb((hue + 0.11) % 1.0, 0.70, 0.55)
+                r = int((r1 * (1 - t) + r2 * t) * 255)
+                g = int((g1 * (1 - t) + g2 * t) * 255)
+                b = int((b1 * (1 - t) + b2 * t) * 255)
+                painter.fillRect(0, y, w, 1, QColor(r, g, b))
+            painter.end()
+            self.preview.setPixmap(QPixmap.fromImage(img))
+        except Exception:
+            self.preview.setText(title)
 
     def _apply(self) -> None:
         try:

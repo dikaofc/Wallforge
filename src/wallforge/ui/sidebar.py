@@ -1,53 +1,48 @@
-"""Left navigation sidebar (themed, readable, icon-free labels)."""
+"""Left navigation sidebar (minimal: Library + Settings)."""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QListWidget, QListWidgetItem, QWidget, QVBoxLayout
+from PySide6.QtWidgets import QListWidget, QListWidgetItem, QVBoxLayout, QLabel, QWidget
 
 
 class Sidebar(QWidget):
     pageSelected = Signal(str)
 
     PAGES = [
-        ("Home", "home"),
-        ("Library", "library"),
-        ("Favorites", "favorites"),
-        ("Collections", "collections"),
-        ("Displays", "displays"),
-        ("Performance", "performance"),
-        ("Editor", "editor"),
-        ("Settings", "settings"),
+        ("library", "Wallpapers"),
+        ("settings", "Settings"),
     ]
 
     def __init__(self) -> None:
         super().__init__()
-        self.setFixedWidth(180)
         self.setStyleSheet(
-            "background:#1b1d23;border-right:1px solid #2a2d36;")
+            "background:#0c0e14;border-right:1px solid #23262f;")
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 8, 0, 8)
         layout.setSpacing(2)
         self.list = QListWidget()
-        self.list.setStyleSheet(
-            "QListWidget{border:0;background:#1b1d23;}"
-            "QListWidget::item{padding:11px 18px;color:#cfd2da;font-size:14px;}"
-            "QListWidget::item:selected{background:#2d6cdf;color:#fff;border-radius:0;}"
-            "QListWidget::item:hover{background:#23262f;}")
-        for label, key in self.PAGES:
+        self.list.setStyleSheet("""
+            QListWidget { background:transparent; border:none;
+                          font-size:14px; color:#e6e6e6; }
+            QListWidget::item { padding:11px 14px; }
+            QListWidget::item:selected { background:#2d6cdf; color:#fff;
+                                         border-radius:6px; }
+            QListWidget::item:hover:!selected { background:#1b1e26; }
+        """)
+        for key, label in self.PAGES:
             item = QListWidgetItem(label)
             item.setData(Qt.UserRole, key)
             self.list.addItem(item)
-        self.list.currentRowChanged.connect(self._on_select)
+        self.list.currentItemChanged.connect(self._changed)
         layout.addWidget(self.list)
-        layout.addStretch()
+        layout.addStretch(1)
 
-    def _on_select(self, row: int) -> None:
-        item = self.list.item(row)
-        if item:
-            self.pageSelected.emit(item.data(Qt.UserRole))
+    def _changed(self, cur, _prev):
+        if cur:
+            self.pageSelected.emit(cur.data(Qt.UserRole))
 
     def select(self, key: str) -> None:
         for i in range(self.list.count()):
             if self.list.item(i).data(Qt.UserRole) == key:
                 self.list.setCurrentRow(i)
-                return
+                break

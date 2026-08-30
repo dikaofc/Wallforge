@@ -1,8 +1,21 @@
-"""Main application window: sidebar + stacked pages (all real views)."""
+"""Main application window — simplified: add / pick / apply.
+
+Layout:
+  [ Sidebar ] [ TopBar: + Add | Search | Pause | Next ] [ Grid / Settings ]
+Click a wallpaper in the grid -> it is applied immediately.
+The "Add wallpaper" button opens a file picker, imports the file as a
+new wallpaper, and applies it. Everything else (editor, displays,
+performance, collections) lives under Settings so the main UI stays tiny.
+"""
 from __future__ import annotations
 
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QLineEdit, QStackedWidget,
-                               QVBoxLayout, QWidget)
+import json
+import shutil
+from pathlib import Path
+
+from PySide6.QtWidgets import (QHBoxLayout, QLabel, QLineEdit, QPushButton,
+                               QStackedWidget, QVBoxLayout, QWidget, QFileDialog,
+                               QMessageBox, QMenu)
 
 from ..core.config import Config
 from ..database.database import Database
@@ -10,12 +23,6 @@ from ..performance.pause_manager import PauseManager
 from .sidebar import Sidebar
 from .wallpaper_grid import WallpaperGrid
 from .settings import SettingsPage
-from .home_page import HomePage
-from .collections_page import CollectionsPage
-from .displays_page import DisplaysPage
-from .performance_page import PerformancePage
-from .editor_page import EditorPage
-from .preview import PreviewDialog
 
 
 class MainWindow(QWidget):
@@ -28,107 +35,154 @@ class MainWindow(QWidget):
         self.manager = manager
         self.pause_mgr = pause_mgr
         self.setWindowTitle("Wallforge")
-        self.resize(1080, 680)
+        self.resize(1000, 640)
         self.setStyleSheet("background:#12141a;color:#e6e6e6;")
 
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
         self.sidebar = Sidebar()
-        self.sidebar.setMinimumWidth(170)
+        self.sidebar.setMinimumWidth(160)
         root.addWidget(self.sidebar)
 
         right = QVBoxLayout()
         right.setContentsMargins(10, 10, 10, 10)
         right.setSpacing(8)
-        self.search = QLineEdit()
-        self.search.setPlaceholderText("Search wallpapers…")
-        self.search.textChanged.connect(self._search)
-        self.search.setMinimumHeight(34)
-        right.addWidget(self.search)
-
+        right.addLayout(self._topbar())
         self.stack = QStackedWidget()
-        self.stack.setStyleSheet("background:#12141a;")
         right.addWidget(self.stack, 1)
         root.addLayout(right, 1)
 
-        self._build_pages()
-        self.sidebar.pageSelected.connect(self._show)
-        self._show("home")
-
-        self.grid.wallpaperClicked.connect(self._open_preview)
-
-    def _build_pages(self) -> None:
-        self.home = HomePage(self.db, self.manager, self._show)
+        # Pages
         self.grid = WallpaperGrid()
-        self.fav = WallpaperGrid()
-        self.collections = CollectionsPage(self.db, self.manager)
-        self.displays = DisplaysPage(self.db, self.manager)
-        self.performance = PerformancePage(self.config, self.manager, self.pause_mgr)
-        self.editor = EditorPage(self.manager)
-        self.editor.export_requested.connect(self._on_export)
         self.settings_page = SettingsPage(self.config, self.manager)
+        self.stack.addWidget(self.grid)                 # 0 library
+        self.stack.addWidget(self.settings_page)        # 1 settings
 
-        # Wrap fixed-content pages in scroll areas so they never overflow
-        # small windows (text stays visible, layout stays responsive).
-        from PySide6.QtWidgets import QScrollArea
-        def scrolled(widget):
-            sa = QScrollArea()
-            sa.setWidgetResizable(True)
-            sa.setWidget(widget)
-            return sa
+        self.grid.wallpaperClicked.connect(self._apply_wallpaper)
+        self.grid.wallpaperRightClicked.connect(self._fav_toggle)
+        self.sidebar.pageSelected.connect(self._show)
 
-        self.stack.addWidget(self.home)               # home
-        self.stack.addWidget(self.grid)               # library
-        self.stack.addWidget(self.fav)                # favorites
-        self.stack.addWidget(scrolled(self.collections))   # collections
-        self.stack.addWidget(scrolled(self.displays))      # displays
-        self.stack.addWidget(scrolled(self.performance))   # performance
-        self.stack.addWidget(scrolled(self.editor))        # editor
-        self.stack.addWidget(scrolled(self.settings_page)) # settings
+        self._refresh_grid()
+        self.sidebar.select("library")
 
-        self._pages = {
-            "home": 0, "library": 1, "favorites": 2, "collections": 3,
-            "displays": 4, "performance": 5, "editor": 6, "settings": 7,
-        }
+    # ---- top bar -------------------------------------------------------
+    def _topbar(self) -> QHBoxLayout:
+        bar = QHBoxLayout()
+        bar.setSpacing(8)
 
+        add = QPushButton("+ Add wallpaper")
+        add.setStyleSheet("background:#2d6cdf;color:#fff;font-weight:bold;"
+                          "padding:8px 14px;border-radius:6px;font-size:13px;")
+        add.clicked.connect(self._add_wallpaper)
+
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("Search wallpapers…")
+        self.search.setMinimumHeight(34)
+        self.search.textChanged.connect(self._search)
+
+        pause = QPushButton("Pause")
+        pause.setMinimumHeight(34)
+        pause.clicked.connect(lambda: self._toggle_pause(pause))
+
+        nxt = QPushButton("Next")
+        nxt.setMinimumHeight(34)
+        nxt.clicked.connect(self._next)
+
+        bar.addWidget(add)
+        bar.addWidget(self.search, 1)
+        bar.addWidget(pause)
+        bar.addWidget(nxt)
+        self._pause_btn = pause
+        return bar
+
+    # ---- navigation ----------------------------------------------------
     def _show(self, key: str) -> None:
-        idx = self._pages.get(key, 1)
-        self.stack.setCurrentIndex(idx)
         if key == "library":
-            self._refresh_grid(fav=False)
-        elif key == "favorites":
-            self._refresh_grid(fav=True)
-        elif key == "home":
-            self.home._refresh()
-        self.sidebar.select(key)
+            self.stack.setCurrentIndex(0)
+            self._refresh_grid()
+        elif key == "settings":
+            self.stack.setCurrentIndex(1)
+
+    # ---- wallpaper actions --------------------------------------------
+    def _refresh_grid(self, fav: bool = False) -> None:
+        items = self.db.list_wallpapers(fav_only=fav)
+        self.grid.set_wallpapers(items)
 
     def _search(self, text: str) -> None:
-        if self.stack.currentIndex() in (1, 2):
-            fav = self.stack.currentIndex() == 2
-            items = self.db.list_wallpapers(fav_only=fav, search=text or None)
-            (self.fav if fav else self.grid).set_wallpapers(items)
+        items = self.db.list_wallpapers(fav_only=False, search=text or None)
+        self.grid.set_wallpapers(items)
 
-    def _refresh_grid(self, fav: bool) -> None:
-        items = self.db.list_wallpapers(fav_only=fav)
-        (self.fav if fav else self.grid).set_wallpapers(items)
-
-    def _open_preview(self, wid: int) -> None:
+    def _apply_wallpaper(self, wid: int) -> None:
         w = self.db.get_wallpaper(wid)
         if not w:
             return
-        dlg = PreviewDialog(
-            w, self.db,
-            on_apply=lambda i: self.manager.apply(i),
-            on_favorite=lambda: (self._refresh_grid(True),
-                                 self.home._refresh()),
-            manager=self.manager,
-        )
-        dlg.exec()
+        ok = self.manager.apply(wid)
+        if ok:
+            self._status(f"Applied: {w.title}")
+        else:
+            self._status("Failed to apply — see log", error=True)
 
-    def _on_export(self, folder: str) -> None:
+    def _fav_toggle(self, wid: int) -> None:
+        w = self.db.get_wallpaper(wid)
+        if not w:
+            return
+        self.db.set_favorite(wid, not bool(w.favorite))
+        self._refresh_grid()
+
+    def _toggle_pause(self, btn: QPushButton) -> None:
+        if getattr(self.manager, "_paused", False):
+            self.manager.resume_all()
+            self.manager._paused = False
+            btn.setText("Pause")
+        else:
+            self.manager.pause_all()
+            self.manager._paused = True
+            btn.setText("Resume")
+
+    def _next(self) -> None:
+        items = self.db.list_wallpapers()
+        if not items:
+            return
+        cur = self.manager.active_wallpaper_id
+        idx = 0
+        for i, w in enumerate(items):
+            if w.id == cur:
+                idx = (i + 1) % len(items)
+                break
+        self._apply_wallpaper(items[idx].id)
+
+    def _add_wallpaper(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Add wallpaper",
+            "", "Media (*.jpg *.jpeg *.png *.webp *.bmp *.mp4 *.webm *.mkv)")
+        if not path:
+            return
+        src = Path(path)
+        folder = Path(self.config.wallpapers_dir) / src.stem
+        folder.mkdir(parents=True, exist_ok=True)
+        dst = folder / src.name
+        if dst != src:
+            shutil.copy(src, dst)
+        wtype = "video" if src.suffix.lower() in (".mp4", ".webm", ".mkv") else "image"
+        manifest = {
+            "name": src.stem,
+            "author": "You",
+            "type": wtype,
+            "version": "1.0",
+            "tags": [],
+        }
+        (folder / "manifest.json").write_text(json.dumps(manifest, indent=2))
         from ..services.indexing import index_directory
-        from pathlib import Path
         index_directory(self.db, Path(self.config.wallpapers_dir))
-        self.home._refresh()
-        self._refresh_grid(fav=False)
+        w = self.db.get_wallpaper_by_path(str(folder))
+        if w:
+            self._apply_wallpaper(w.id)
+        self._refresh_grid()
+        QMessageBox.information(self, "Added", f"Added & applied: {src.stem}")
+
+    # ---- misc ----------------------------------------------------------
+    def _status(self, msg: str, error: bool = False) -> None:
+        # Lightweight status: briefly raise a tooltip-like message box for errors.
+        if error:
+            QMessageBox.warning(self, "Wallforge", msg)

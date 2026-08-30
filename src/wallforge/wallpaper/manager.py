@@ -42,6 +42,7 @@ class WallpaperManager:
         self.audio = AudioCapture()
         self.synchronize = False
         self.active_wallpaper_id: Optional[int] = None
+        self._paused = False
         bus.monitor_changed.connect(self.on_monitor_changed)
 
     # ---- introspection -------------------------------------------------
@@ -88,6 +89,10 @@ class WallpaperManager:
             r.start()
             if r.attach():
                 self.renderers[monitor_name] = r
+                log.info("renderer attached on %s (hwnd=%s)", monitor_name, r.hwnd())
+            else:
+                log.error("renderer attach FAILED on %s — wallpaper will not be visible",
+                          monitor_name)
         except Exception as exc:
             log.exception("renderer spawn failed: %s", exc)
 

@@ -27,9 +27,10 @@ WS_VISIBLE = 0x10000000
 WS_POPUP = 0x80000000
 WS_EX_TOOLWINDOW = 0x00000080
 WS_EX_NOACTIVATE = 0x08000000
-HWND_BOTTOM = 1
 SWP_NOACTIVATE = 0x0010
 SWP_NOZORDER = 0x0004
+SWP_NOMOVE = 0x0002
+SWP_NOSIZE = 0x0001
 SWP_NOOWNERZORDER = 0x0200
 
 SPI_GETDESKWALLPAPER = 0x0073
@@ -74,7 +75,14 @@ def find_desktop_worker_window() -> int:
 
 
 def attach_to_desktop(hwnd: int) -> bool:
-    """Reparent a render window under the desktop layer."""
+    """Reparent a render window under the desktop layer.
+
+    The window becomes a child of the WorkerW that sits behind the desktop
+    icons. We deliberately do NOT use HWND_BOTTOM (that would drop the window
+    behind the WorkerW background and make it invisible); instead we keep it
+    as a normal child and then push the SHELLDLL_DefView (the icon listview)
+    back to the top so icons stay visible above the wallpaper.
+    """
     try:
         worker = find_desktop_worker_window()
         if not worker:
@@ -86,10 +94,18 @@ def attach_to_desktop(hwnd: int) -> bool:
         ex = ex | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
         user32.SetWindowLongW(hwnd, GWL_EXSTYLE, ex)
         user32.SetParent(hwnd, worker)
+        # Make the render window a normal child (top of the WorkerW's children),
+        # then raise the desktop icon listview above it so icons remain visible.
         user32.SetWindowPos(
-            hwnd, HWND_BOTTOM, 0, 0, 0, 0,
-            SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOOWNERZORDER,
+            hwnd, 0, 0, 0, 0, 0,
+            SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER,
         )
+        defview = user32.FindWindowExW(worker, 0, "SHELLDLL_DefView", None)
+        if defview:
+            user32.SetWindowPos(
+                defview, 0, 0, 0, 0, 0,
+                SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER,
+            )
         logger.debug("attached hwnd=%s to worker=%s", hwnd, worker)
         return True
     except Exception as exc:  # pragma: no cover - defensive
