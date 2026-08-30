@@ -1,0 +1,13 @@
+# Runtime
+PySide6>=6.7
+pywin32>=306
+pillow>=10.0
+python-vlc>=3.0.18122
+pywebview>=5.0          # WebView2 (edgechromium) untuk web wallpaper
+soundcard>=0.2.1        # WASAPI loopback capture untuk audio-reactive
+psutil>=5.9
+PyOpenGL>=3.1
+
+# Build only (tidak diikutsertakan ke runtime, untuk dev environment)
+pyinstaller>=6.0
+pytest>=8.0

@@ -1,0 +1,36 @@
+# Build artifacts
+dist/
+build/
+*.spec.bak
+
+# Virtual env
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Bundled 3rd-party runtimes (too large to version; fetched at build time)
+installer/vlc/
+installer/vlc.7z
+installer/7zr.exe
+installer/innosetup.exe
+installer/Wallforge-Setup.exe
+installer/out/
+installer/Wallforge-Update.zip
+
+# Local data / logs
+logs/
+*.log
+
+# Editor temp / OS cruft
+_impcheck.py
+Thumbs.db
+ehthumbs.db
+
+# IDE
+.vscode/
+.idea/

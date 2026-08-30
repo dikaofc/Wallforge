@@ -1,0 +1,11 @@
+{
+  "name": "Retro Web",
+  "author": "Dika",
+  "type": "web",
+  "version": "1.0",
+  "resolution": "1920x1080",
+  "fps": 60,
+  "audio": false,
+  "entry": "content/index.html",
+  "tags": ["web", "retro"]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Aurora Drift",
+  "author": "Dika",
+  "type": "image",
+  "version": "1.0",
+  "resolution": "1920x1080",
+  "fps": 60,
+  "audio": false,
+  "entry": "wallpaper.jpg",
+  "tags": ["aurora", "calm"]
+}

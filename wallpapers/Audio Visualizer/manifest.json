@@ -1,0 +1,11 @@
+{
+  "name": "Audio Visualizer",
+  "author": "Dika",
+  "type": "interactive",
+  "version": "1.0",
+  "resolution": "1920x1080",
+  "fps": 60,
+  "audio": true,
+  "entry": "content/scene.py",
+  "tags": ["audio_reactive", "visualizer"]
+}

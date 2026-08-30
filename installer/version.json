@@ -1,0 +1,7 @@
+{
+  "version": "0.1.0",
+  "url": "https://example.com/wallforge/Wallforge-Update.zip",
+  "sha256": "",
+  "notes": "Current release. Bump version + url here to ship an update.",
+  "mandatory": false
+}
