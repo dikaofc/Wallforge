@@ -6,8 +6,6 @@ Qt signals so the main app can control it.
 """
 from __future__ import annotations
 
-import threading
-
 from ..core.logger import setup_logger
 from ..windows.webview2 import ensure_runtime
 from .renderer import Renderer
@@ -28,6 +26,10 @@ class WebRenderer(Renderer):
         self.attach()
         # Make sure the WebView2 runtime is present before we spin up pywebview.
         ensure_runtime()
+        # pywebview requires running on the Python main thread, so schedule it
+        # via a Qt timer (runs on the Qt/main thread) rather than a raw thread.
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, self._start_webview)
 
     def _start_webview(self) -> None:
         import webview
@@ -50,8 +52,8 @@ class WebRenderer(Renderer):
             log.error("webview start failed: %s", exc)
 
     def start(self) -> None:
-        self._thread = threading.Thread(target=self._start_webview, daemon=True)
-        self._thread.start()
+        # WebView startup is scheduled via QTimer in init(); nothing to do here
+        # except mark the renderer as running.
         self.running = True
 
     def pause(self) -> None:
